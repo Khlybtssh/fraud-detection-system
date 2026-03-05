@@ -1,9 +1,8 @@
 data/
+models/
 *.csv
-*.parquet
-*.pt
 *.pkl
-*.h5
+*.pt
 .ipynb_checkpoints/
 __pycache__/
-venv/
+.idea/
