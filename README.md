@@ -19,7 +19,8 @@ These outputs feed into a unified **Decision Layer** which determines if a trans
 fraud_detection_system/
 │
 ├── config.py                     # Centralized hyperparameters & paths
-├── main.py                       # Main API entry point for single-transaction inference
+├── main.py                       # Direct Python entry point for single-transaction inference
+├── app.py                        # FastAPI REST API server for HTTP-based inference
 │   
 ├── artifacts/                    # Saved output directory for trained ML weights
 │   ├── anomaly_model.pkl         # Fitted IsolationForest instance
@@ -78,7 +79,55 @@ python training_pipeline/train.py
 
 ### 2. Live Inference
 
-With the artifacts compiled, `main.py` serves as the entry point for evaluating single or batched transactions against the trained parameters and returning the ultimate Fraud string classification.
+With the artifacts compiled, you have two options for running live inference:
+
+#### Option A: REST API (`app.py`) — Recommended
+
+The system exposes a **FastAPI** REST API for HTTP-based transaction evaluation. Start the server with:
+
+```bash
+cd fraud_detection_system
+uvicorn app:app --reload
+```
+
+The API will be available at `http://127.0.0.1:8000`. Interactive docs are auto-generated at `/docs` (Swagger UI) and `/redoc`.
+
+#### API Endpoints
+
+| Method   | Endpoint                          | Description                                  |
+|----------|-----------------------------------|----------------------------------------------|
+| `GET`    | `/`                               | Health check — returns a welcome message     |
+| `GET`    | `/transactions`                   | List all recorded transactions               |
+| `GET`    | `/transactions/{transaction_id}`  | Retrieve a specific transaction by ID        |
+| `POST`   | `/transactions`                   | Submit a new transaction for evaluation      |
+| `DELETE` | `/transactions/{transaction_id}`  | Delete a transaction by ID                   |
+
+#### Example Requests
+
+**List all transactions:**
+```bash
+curl http://127.0.0.1:8000/transactions
+```
+
+**Get a specific transaction:**
+```bash
+curl http://127.0.0.1:8000/transactions/1
+```
+
+**Submit a new transaction:**
+```bash
+curl -X POST "http://127.0.0.1:8000/transactions?amount=500.00&merchant=Amazon"
+```
+Transactions with `amount < 1000` are automatically `approved`; amounts `>= 1000` are `flagged` for review.
+
+**Delete a transaction:**
+```bash
+curl -X DELETE http://127.0.0.1:8000/transactions/2
+```
+
+#### Option B: Direct Python (`main.py`)
+
+`main.py` serves as a standalone entry point for evaluating transactions directly via Python without spinning up a server.
 
 ```bash
 cd fraud_detection_system
@@ -110,6 +159,16 @@ You can easily adjust hyperparameters or model architecture via `config.py` with
 }
 ```
 
+## Dependencies
+
+The API layer requires **FastAPI** and **Uvicorn**. Install them alongside the existing requirements:
+
+```bash
+pip install fastapi uvicorn
+pip install -r requirements.txt
+```
+
 ## Adding New Features/Rules
 - To add a new ML feature transformation, update `preprocessing/feature_engineering.py`.
 - To establish a new company policy or business logic constraint, implement the flag in `risk_engine/rule_engine.py`.
+- To add a new API endpoint, define the route in `app.py`.
